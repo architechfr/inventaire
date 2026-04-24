@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -21,7 +22,7 @@
 
 <!-- Google Fonts loaded only if online; graceful fallback to Georgia/system-ui otherwise -->
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" onerror="this.remove()" />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" onerror="this.remove()" />
 <style>
 /* MEAL Repas — design tokens + global styles */
 
@@ -363,6 +364,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 @keyframes screenEnter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 
+/* --- MEAL v7.6 : typo display changée (j de Fraunces trop baroque) --- */
+:root { --font-display: 'Lora', 'Georgia', 'Times New Roman', serif; }
+
 /* --- MEAL v7.2 --- */
 .brand-tag-visible {
   display: inline !important;
@@ -390,6 +394,67 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   transition: background .15s, border-color .15s, color .15s;
 }
 .pill.pill-on { background: var(--meal-dark); color: #fff; border-color: var(--meal-dark); }
+
+/* --- v7.4 : modales plus lisibles sur mobile + bouton retour évident --- */
+.modal-title {
+  font-size: 17px !important;
+  line-height: 1.15;
+}
+@media (min-width: 520px) { .modal-title { font-size: 20px !important; } }
+@media (min-width: 720px) { .modal-title { font-size: 22px !important; } }
+
+.modal-close-btn {
+  background: var(--cream-deep);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.modal-close-btn:hover { background: var(--line); }
+
+/* v7.11 : approche simple et fiable - c'est le BACKDROP qui scroll,
+   la modale a sa hauteur naturelle. Marche dans tous les navigateurs,
+   pas de modal-in-modal ni de position:fixed superposés. */
+.modal-backdrop {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px !important;
+  align-items: flex-start !important;  /* La modale commence en haut */
+}
+@media (min-width: 720px) {
+  .modal-backdrop { padding: 24px !important; }
+}
+.modal {
+  position: relative !important;
+  max-height: none !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+  border-radius: 20px !important;
+  width: 100% !important;
+  max-width: 720px !important;
+}
+.modal-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 12;
+  background: var(--white) !important;
+}
+.modal-foot {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 12;
+  background: var(--white) !important;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
+}
 
 </style>
 </head>
@@ -1423,12 +1488,13 @@ function Modal({
   }, React.createElement("h3", {
     className: "modal-title"
   }, title), React.createElement("button", {
-    className: "iconbtn",
+    className: "modal-close-btn",
     onClick: onClose,
-    "aria-label": "Fermer"
+    "aria-label": "Fermer et revenir"
   }, React.createElement(Icon, {
-    name: "close"
-  }))), React.createElement("div", {
+    name: "arrow-left",
+    size: 16
+  }), " Retour")), React.createElement("div", {
     className: "modal-body"
   }, children), footer && React.createElement("div", {
     className: "modal-foot"
@@ -2382,6 +2448,9 @@ function ItemModal({
         ...(info.unit ? {
           unit: info.unit
         } : {}),
+        ...(info.packQty ? {
+          packQty: info.packQty
+        } : {}),
         ...(info.cat ? {
           cat: info.cat
         } : {}),
@@ -2454,13 +2523,19 @@ function ItemModal({
     value: u
   }, u))))), React.createElement("div", {
     className: "field"
-  }, React.createElement("label", null, "Unit\xE9s par colis / Pack"), React.createElement("input", {
+  }, React.createElement("label", null, "Bouteilles / unit\xE9s par pack"), React.createElement("input", {
     className: "input",
     type: "number",
     min: "1",
     value: form.packQty,
-    onChange: e => update('packQty', parseInt(e.target.value) || 1)
-  }))), React.createElement("div", {
+    onChange: e => update('packQty', parseInt(e.target.value) || 1),
+    placeholder: "Ex : 6 pour un pack d'eau"
+  }), React.createElement("div", {
+    className: "txt-sm muted",
+    style: {
+      marginTop: 4
+    }
+  }, "Pack de 6 bouteilles d'1,5 L \u2192 saisir ", React.createElement("b", null, "1,5"), " en volume unitaire et ", React.createElement("b", null, "6"), " ici. Laisser \xE0 1 pour les articles \xE0 l'unit\xE9."))), React.createElement("div", {
     className: "field"
   }, React.createElement("label", null, "Cat\xE9gorie ", React.createElement("span", {
     className: "req"
@@ -2698,7 +2773,8 @@ async function fetchOpenFoodFacts(barcode) {
 function parseQuantity(str) {
   if (!str) return {
     weight: '',
-    unit: 'g'
+    unit: 'g',
+    packQty: undefined
   };
   const s = String(str).toLowerCase().replace(/[×x*]/g, 'x');
   let m = s.match(/(\d+)\s*x\s*(\d+(?:[.,]\d+)?)\s*(kg|g|ml|cl|l)\b/);
@@ -2707,8 +2783,9 @@ function parseQuantity(str) {
     const unitVal = parseFloat(m[2].replace(',', '.'));
     const unit = m[3] === 'l' ? 'L' : m[3];
     return {
-      weight: +(n * unitVal).toFixed(2),
-      unit
+      weight: unitVal,
+      unit,
+      packQty: n
     };
   }
   m = s.match(/(\d+(?:[.,]\d+)?)\s*(kg|g|ml|cl|l)\b/);
@@ -2717,12 +2794,14 @@ function parseQuantity(str) {
     const u = m[2] === 'l' ? 'L' : m[2];
     return {
       weight: w,
-      unit: u
+      unit: u,
+      packQty: undefined
     };
   }
   return {
     weight: '',
-    unit: 'g'
+    unit: 'g',
+    packQty: undefined
   };
 }
 function mapOffCategory(offTags, mealCategories) {
@@ -2751,7 +2830,8 @@ function extractProductFields(offProduct, mealCategories) {
   const description = (p.generic_name_fr || p.generic_name || '').trim() !== name ? (p.generic_name_fr || p.generic_name || '').trim() : '';
   const {
     weight,
-    unit
+    unit,
+    packQty
   } = parseQuantity(p.quantity);
   const cat = mapOffCategory(p.categories_tags || [], mealCategories);
   const photo = p.image_front_small_url || null;
@@ -2761,6 +2841,7 @@ function extractProductFields(offProduct, mealCategories) {
     description: description || undefined,
     weight: weight !== '' ? weight : undefined,
     unit: unit || undefined,
+    packQty: packQty,
     cat: cat || undefined,
     photo: photo || undefined
   };
@@ -2777,7 +2858,8 @@ function ScanScreen({
   setState,
   goto,
   toast,
-  fireConfetti
+  fireConfetti,
+  fromHome
 }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -2812,9 +2894,23 @@ function ScanScreen({
   }, []);
   useEffect(() => {
     cancelledRef.current = false;
+    let lockedOk = false;
+    (async () => {
+      try {
+        if (screen.orientation && typeof screen.orientation.lock === 'function') {
+          await screen.orientation.lock('portrait');
+          lockedOk = true;
+        }
+      } catch (e) {}
+    })();
     return () => {
       cancelledRef.current = true;
       stopCam();
+      try {
+        if (lockedOk && screen.orientation && typeof screen.orientation.unlock === 'function') {
+          screen.orientation.unlock();
+        }
+      } catch (e) {}
     };
   }, [stopCam]);
   const handleCode = async code => {
@@ -2824,11 +2920,22 @@ function ScanScreen({
     await new Promise(r => setTimeout(r, 600));
     if (cancelledRef.current) return;
     stopCam();
-    if (match) {
+    if (match && state.session && !fromHome) {
       setMatched(match);
       const current = state.session && state.session.counts && state.session.counts[match.id];
       setQty(current !== undefined ? current : match.theo || 0);
       setMode('result');
+      return;
+    }
+    if (match) {
+      toast('Article déjà au catalogue : ouverture de la fiche', 'meal');
+      setState(s => ({
+        ...s,
+        pendingEdit: match
+      }));
+      goto({
+        screen: fromHome ? 'home' : 'session'
+      });
       return;
     }
     setMode('lookup');
@@ -2844,6 +2951,7 @@ function ScanScreen({
       if (enriched.description) pending.description = enriched.description;
       if (enriched.weight) pending.weight = enriched.weight;
       if (enriched.unit) pending.unit = enriched.unit;
+      if (enriched.packQty) pending.packQty = enriched.packQty;
       if (enriched.cat) pending.cat = enriched.cat;
       if (enriched.photo) pending.photo = enriched.photo;
       toast('Produit trouvé dans Open Food Facts : ' + (enriched.name || code), 'meal');
@@ -2855,7 +2963,7 @@ function ScanScreen({
       pendingEdit: pending
     }));
     goto({
-      screen: 'session'
+      screen: fromHome ? 'home' : 'session'
     });
   };
   const validateCount = () => {
@@ -4161,11 +4269,13 @@ function MessageComposer({
   contacts,
   onClose,
   onSent,
-  toast
+  toast,
+  initialSubject,
+  initialBody
 }) {
   const [channel, setChannel] = useState('email');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [subject, setSubject] = useState(initialSubject || '');
+  const [body, setBody] = useState(initialBody || '');
   const emails = contacts.filter(c => c.email).map(c => c.email);
   const phones = contacts.filter(c => c.phone).map(c => c.phone);
   const channelCount = channel === 'email' ? emails.length : phones.length;
@@ -4278,6 +4388,20 @@ Object.assign(window, {
   ContactModal,
   MessageComposer
 });
+const DISTRIBUTIONS_2026_SEED = ['2026-04-16', '2026-04-30', '2026-05-14', '2026-05-28', '2026-06-11', '2026-06-25', '2026-07-09', '2026-07-23', '2026-08-06', '2026-08-20', '2026-09-03', '2026-09-17', '2026-10-01', '2026-10-15', '2026-10-29', '2026-11-12', '2026-11-26', '2026-12-10', '2026-12-24'].map(date => ({
+  id: 'dist-' + date,
+  title: 'Distribution — ' + new Date(date + 'T12:00').toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long'
+  }),
+  description: 'Distribution bimensuelle aux bénéficiaires (17 familles, 44 personnes).',
+  start: date + 'T18:00',
+  end: date + 'T19:30',
+  location: 'Locaux MEAL Repas, 24 rue Jean Jaurès, Place Auguste Trézy, 77164 Ferrières-en-Brie',
+  attendeeIds: [],
+  _seed: true
+}));
+window.DISTRIBUTIONS_2026_SEED = DISTRIBUTIONS_2026_SEED;
 function pad2(n) {
   return String(n).padStart(2, '0');
 }
@@ -4336,6 +4460,53 @@ function downloadICS(filename, content) {
 }
 window.generateICS = generateICS;
 window.downloadICS = downloadICS;
+function formatEventText(ev, contacts) {
+  const d = new Date(ev.start);
+  const dEnd = ev.end ? new Date(ev.end) : null;
+  const dateStr = d.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  const timeStr = d.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }) + (dEnd ? ' → ' + dEnd.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }) : '');
+  const attendees = (ev.attendeeIds || []).map(id => (contacts || []).find(c => c.id === id)).filter(Boolean);
+  const lines = ['📅 ' + ev.title, '🗓 ' + dateStr + ' · ' + timeStr];
+  if (ev.location) lines.push('📍 ' + ev.location);
+  if (ev.description) lines.push('', ev.description);
+  if (attendees.length > 0) {
+    lines.push('', 'Bénévoles présents :');
+    for (const c of attendees) {
+      lines.push('• ' + (c.firstName + ' ' + c.lastName).trim() + (c.phone ? ' (' + c.phone + ')' : ''));
+    }
+  }
+  lines.push('', '— MEAL Repas · Ferrières-en-Brie');
+  return lines.join('\n');
+}
+async function shareEvent(ev, contacts, toast) {
+  const text = formatEventText(ev, contacts);
+  const title = ev.title;
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title,
+        text
+      });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+  const subject = 'MEAL Repas — ' + ev.title;
+  window.location.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text);
+  toast('Ouverture du client mail…', 'meal');
+}
 function PlanningScreen({
   state,
   setState,
@@ -4343,8 +4514,22 @@ function PlanningScreen({
   toast
 }) {
   const [editing, setEditing] = useState(null);
+  const [composing, setComposing] = useState(null);
   const events = state.events || [];
   const contacts = state.contacts || [];
+  const load2026Calendar = () => {
+    const existingIds = new Set(events.map(e => e.id));
+    const toAdd = DISTRIBUTIONS_2026_SEED.filter(e => !existingIds.has(e.id));
+    if (toAdd.length === 0) {
+      toast('Le calendrier 2026 est déjà chargé', 'accent');
+      return;
+    }
+    setState(s => ({
+      ...s,
+      events: [...(s.events || []), ...toAdd]
+    }));
+    toast(toAdd.length + ' distribution' + (toAdd.length > 1 ? 's' : '') + ' 2026 ajoutée' + (toAdd.length > 1 ? 's' : ''), 'meal');
+  };
   const grouped = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -4488,14 +4673,42 @@ function PlanningScreen({
     }, "\uD83D\uDD50 ", timeLabel), e.location && React.createElement("div", {
       className: "txt-sm muted",
       style: {
-        marginTop: 2
+        marginTop: 2,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap'
       }
     }, "\uD83D\uDCCD ", e.location), attCount > 0 && React.createElement("div", {
-      className: "txt-sm muted",
+      className: "txt-sm",
       style: {
-        marginTop: 2
+        marginTop: 4,
+        color: 'var(--meal-dark)',
+        fontWeight: 600
       }
-    }, "\uD83D\uDC65 ", attCount, " participant", attCount > 1 ? 's' : '')), React.createElement("button", {
+    }, "\u2713 ", attCount, " b\xE9n\xE9vole", attCount > 1 ? 's' : '', " disponible", attCount > 1 ? 's' : '')), React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        flexShrink: 0
+      }
+    }, React.createElement("button", {
+      className: "iconbtn",
+      onClick: () => shareEvent(e, contacts, toast),
+      "aria-label": "Partager",
+      title: "Envoyer \xE0 quelqu'un (WhatsApp, SMS, mail\u2026)",
+      style: {
+        display: 'grid',
+        placeItems: 'center',
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        color: 'var(--meal-dark)'
+      }
+    }, React.createElement(Icon, {
+      name: "arrow-right",
+      size: 18
+    })), React.createElement("button", {
       className: "iconbtn",
       onClick: () => exportOne(e),
       "aria-label": "Exporter ICS",
@@ -4506,13 +4719,12 @@ function PlanningScreen({
         width: 40,
         height: 40,
         borderRadius: 10,
-        color: 'var(--meal-dark)',
-        flexShrink: 0
+        color: 'var(--meal-dark)'
       }
     }, React.createElement(Icon, {
       name: "clock",
       size: 18
-    })));
+    }))));
   };
   return React.createElement("div", {
     className: "screen-enter"
@@ -4544,7 +4756,14 @@ function PlanningScreen({
       gap: 8,
       flexWrap: 'wrap'
     }
-  }, events.length > 0 && React.createElement("button", {
+  }, events.length > 0 && !events.some(e => e._seed) && React.createElement("button", {
+    className: "btn btn-ghost btn-lg",
+    onClick: load2026Calendar,
+    title: "Ajouter les 19 distributions valid\xE9es \xE0 l'AG"
+  }, React.createElement(Icon, {
+    name: "plus",
+    size: 18
+  }), " Charger les distributions 2026"), events.length > 0 && React.createElement("button", {
     className: "btn btn-ghost btn-lg",
     onClick: exportAll,
     title: "Exporter tout en ICS"
@@ -4562,16 +4781,29 @@ function PlanningScreen({
   }), " Nouvel \xE9v\xE9nement"))), events.length === 0 ? React.createElement(Empty, {
     icon: "clock",
     title: "Aucun \xE9v\xE9nement",
-    sub: "Planifie tes distributions, tourn\xE9es et r\xE9unions. Tu pourras les exporter vers Google Calendar, Apple Calendar ou Outlook."
+    sub: "Charge d'abord le calendrier officiel des 19 distributions 2026 valid\xE9es \xE0 l'AG, ou cr\xE9e un \xE9v\xE9nement personnalis\xE9."
+  }, React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+      alignItems: 'center'
+    }
   }, React.createElement("button", {
     className: "btn btn-meal btn-lg",
+    onClick: load2026Calendar
+  }, React.createElement(Icon, {
+    name: "plus",
+    size: 18
+  }), " Charger les 19 distributions 2026"), React.createElement("button", {
+    className: "btn btn-ghost",
     onClick: () => setEditing({
       __new: true
     })
   }, React.createElement(Icon, {
     name: "plus",
-    size: 18
-  }), " Cr\xE9er un \xE9v\xE9nement")) : React.createElement("div", {
+    size: 16
+  }), " Cr\xE9er un autre \xE9v\xE9nement"))) : React.createElement("div", {
     style: {
       display: 'grid',
       gap: 24
@@ -4599,7 +4831,47 @@ function PlanningScreen({
     onSave: saveEvent,
     onDelete: () => deleteEvent(editing.id),
     onExport: () => exportOne(editing),
+    onShare: ev => shareEvent(ev, contacts, toast),
+    onAddContact: c => {
+      setState(s => ({
+        ...s,
+        contacts: [...(s.contacts || []), c]
+      }));
+      toast('Contact ajouté à ton annuaire', 'meal');
+    },
+    onAskAvailability: ev => {
+      const candidates = contacts.filter(c => c.role === 'bureau' || c.role === 'benevole' || c.role === 'coordinateur' || c.role === 'chauffeur');
+      if (candidates.length === 0) {
+        toast('Aucun bénévole enregistré. Ajoute-les depuis Contacts.', 'accent');
+        return;
+      }
+      const d = new Date(ev.start);
+      const dateStr = d.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      });
+      const timeStr = d.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      const msgSubject = 'MEAL Repas — Dispo pour ' + dateStr + ' ?';
+      const msgBody = 'Bonjour,\n\n' + 'Serais-tu disponible pour aider à ' + (ev.title || 'cet événement') + ' ?\n\n' + '📅 ' + dateStr + ' à ' + timeStr + (ev.location ? '\n📍 ' + ev.location : '') + '\n\nMerci de me répondre rapidement pour que je puisse organiser l\'équipe.\n\n' + 'Bien à toi,\n\n— MEAL Repas';
+      setEditing(null);
+      setComposing({
+        contacts: candidates,
+        subject: msgSubject,
+        body: msgBody
+      });
+    },
     onClose: () => setEditing(null)
+  }), composing && window.MessageComposer && React.createElement(MessageComposer, {
+    contacts: composing.contacts,
+    initialSubject: composing.subject,
+    initialBody: composing.body,
+    onClose: () => setComposing(null),
+    onSent: () => setComposing(null),
+    toast: toast
   }));
 }
 function Section({
@@ -4630,6 +4902,9 @@ function EventModal({
   onSave,
   onDelete,
   onExport,
+  onShare,
+  onAskAvailability,
+  onAddContact,
   onClose
 }) {
   const isNew = !event;
@@ -4642,6 +4917,7 @@ function EventModal({
     location: '',
     attendeeIds: []
   });
+  const [addingContact, setAddingContact] = useState(false);
   const valid = form.title.trim() && form.start;
   const update = (k, v) => setForm(f => ({
     ...f,
@@ -4656,11 +4932,52 @@ function EventModal({
       };
     });
   };
+  if (addingContact && window.ContactModal) {
+    return React.createElement(ContactModal, {
+      contact: null,
+      onSave: c => {
+        onAddContact(c);
+        setForm(f => ({
+          ...f,
+          attendeeIds: [...(f.attendeeIds || []), c.id]
+        }));
+        setAddingContact(false);
+      },
+      onDelete: () => setAddingContact(false),
+      onClose: () => setAddingContact(false)
+    });
+  }
   return React.createElement(Modal, {
     title: isNew ? 'Nouvel événement' : form.title,
     onClose: onClose,
     wide: true,
-    footer: React.createElement(React.Fragment, null, !isNew && React.createElement(React.Fragment, null, React.createElement("button", {
+    footer: React.createElement(React.Fragment, null, React.createElement("button", {
+      className: "btn btn-primary btn-lg",
+      disabled: !valid,
+      onClick: () => onSave(form)
+    }, React.createElement(Icon, {
+      name: "check",
+      size: 18
+    }), " Enregistrer"), React.createElement("button", {
+      className: "btn btn-ghost",
+      onClick: onClose
+    }, "Annuler"), React.createElement("div", {
+      className: "grow"
+    }), !isNew && React.createElement(React.Fragment, null, React.createElement("button", {
+      className: "btn btn-ghost",
+      onClick: () => onShare(form),
+      title: "Envoyer \xE0 quelqu'un"
+    }, React.createElement(Icon, {
+      name: "arrow-right",
+      size: 16
+    }), " Partager"), React.createElement("button", {
+      className: "btn btn-ghost",
+      onClick: onExport,
+      title: "T\xE9l\xE9charger le fichier calendrier"
+    }, React.createElement(Icon, {
+      name: "clock",
+      size: 16
+    }), " .ics"), React.createElement("button", {
       className: "btn btn-ghost",
       onClick: onDelete,
       style: {
@@ -4669,25 +4986,7 @@ function EventModal({
     }, React.createElement(Icon, {
       name: "trash",
       size: 16
-    }), " Supprimer"), React.createElement("button", {
-      className: "btn btn-ghost",
-      onClick: onExport
-    }, React.createElement(Icon, {
-      name: "clock",
-      size: 16
-    }), " Exporter .ics")), React.createElement("div", {
-      className: "grow"
-    }), React.createElement("button", {
-      className: "btn btn-ghost",
-      onClick: onClose
-    }, "Annuler"), React.createElement("button", {
-      className: "btn btn-primary",
-      disabled: !valid,
-      onClick: () => onSave(form)
-    }, React.createElement(Icon, {
-      name: "check",
-      size: 18
-    }), " Enregistrer"))
+    }), " Supprimer")))
   }, React.createElement("div", {
     style: {
       display: 'grid',
@@ -4744,14 +5043,52 @@ function EventModal({
     placeholder: "D\xE9tails, agenda, consignes\u2026"
   })), React.createElement("div", {
     className: "field"
-  }, React.createElement("label", null, "Participants ", form.attendeeIds && form.attendeeIds.length > 0 ? '(' + form.attendeeIds.length + ')' : ''), contacts.length === 0 ? React.createElement("div", {
+  }, React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      flexWrap: 'wrap',
+      marginBottom: 8
+    }
+  }, React.createElement("label", {
+    style: {
+      margin: 0
+    }
+  }, "B\xE9n\xE9voles disponibles ", form.attendeeIds && form.attendeeIds.length > 0 ? '(' + form.attendeeIds.length + ')' : ''), React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      flexWrap: 'wrap'
+    }
+  }, React.createElement("button", {
+    type: "button",
+    className: "btn btn-ghost",
+    style: {
+      padding: '6px 12px',
+      fontSize: 13
+    },
+    onClick: () => setAddingContact(true)
+  }, React.createElement(Icon, {
+    name: "plus",
+    size: 14
+  }), " Ajouter un contact"), !isNew && contacts.length > 0 && React.createElement("button", {
+    type: "button",
+    className: "btn btn-ghost",
+    style: {
+      padding: '6px 12px',
+      fontSize: 13
+    },
+    onClick: () => onAskAvailability(form)
+  }, "\uD83D\uDCE9 Demander les dispos"))), contacts.length === 0 ? React.createElement("div", {
     className: "txt-sm muted",
     style: {
       padding: 14,
       background: 'var(--cream-deep)',
       borderRadius: 12
     }
-  }, "Aucun contact enregistr\xE9. Ajoute-en depuis l'\xE9cran Contacts pour pouvoir les associer \xE0 un \xE9v\xE9nement.") : React.createElement("div", {
+  }, "Aucun contact enregistr\xE9. Clique sur ", React.createElement("b", null, "Ajouter un contact"), " ci-dessus pour enregistrer un b\xE9n\xE9vole sans quitter cette fiche.") : React.createElement("div", {
     style: {
       display: 'grid',
       gap: 6,
@@ -4794,7 +5131,13 @@ function EventModal({
       }
     }, (c.firstName + ' ' + c.lastName).trim()), role && React.createElement("div", {
       className: "txt-sm muted"
-    }, role.label)));
+    }, role.label)), checked && React.createElement("span", {
+      style: {
+        color: 'var(--meal-dark)',
+        fontWeight: 700,
+        fontSize: 12
+      }
+    }, "\u2713 Dispo"));
   })))));
 }
 function defaultStartIso() {
@@ -5064,7 +5407,7 @@ function SessionScreen({
   }, React.createElement(Icon, {
     name: "plus",
     size: 20
-  }), " Ajouter")), React.createElement("div", {
+  }), " Nouvel article")), React.createElement("div", {
     style: {
       overflowX: 'auto',
       marginBottom: 20,
@@ -5121,7 +5464,7 @@ function SessionScreen({
     onClick: () => setEditing({
       __new: true
     }),
-    label: "Ajouter",
+    label: "Nouvel article",
     icon: "plus"
   }), editing && React.createElement(ItemModal, {
     item: editing.__new ? null : editing,
@@ -5333,6 +5676,9 @@ function ItemCard({
     initial: count ?? theo ?? 0,
     theo: theo,
     itemName: item.name,
+    itemWeight: item.weight,
+    itemUnit: item.unit,
+    itemPackQty: item.packQty,
     onClose: () => setEditingQty(false),
     onSave: v => {
       onSet(v);
@@ -5344,15 +5690,38 @@ function NumPad({
   initial,
   theo,
   itemName,
+  itemWeight,
+  itemUnit,
+  itemPackQty,
   onClose,
   onSave
 }) {
   const [value, setValue] = useState(String(initial));
-  const tap = d => setValue(v => v === '0' ? d : v + d);
-  const back = () => setValue(v => v.length <= 1 ? '0' : v.slice(0, -1));
-  const clear = () => setValue('0');
+  const [fresh, setFresh] = useState(true);
+  const tap = d => {
+    if (fresh) {
+      setValue(d);
+      setFresh(false);
+      return;
+    }
+    setValue(v => v === '0' ? d : v + d);
+  };
+  const back = () => {
+    setFresh(false);
+    setValue(v => v.length <= 1 ? '0' : v.slice(0, -1));
+  };
+  const clear = () => {
+    setFresh(false);
+    setValue('0');
+  };
   const num = parseInt(value, 10) || 0;
   const diff = num - theo;
+  const packQty = itemPackQty && itemPackQty > 1 ? itemPackQty : null;
+  const packEquiv = packQty ? {
+    full: Math.floor(num / packQty),
+    rem: num % packQty
+  } : null;
+  const totalWeight = itemWeight && itemUnit && num > 0 ? num * parseFloat(itemWeight) : null;
   return React.createElement(Modal, {
     title: "Saisir la quantit\xE9",
     onClose: onClose,
@@ -5380,13 +5749,20 @@ function NumPad({
     className: "row",
     style: {
       justifyContent: 'center',
-      gap: 12
+      gap: 12,
+      flexWrap: 'wrap'
     }
   }, React.createElement("div", {
     className: "badge badge-soft"
   }, "Th\xE9orique : ", theo), React.createElement("div", {
     className: 'badge ' + (diff === 0 ? 'badge-ok' : diff > 0 ? 'badge-meal' : 'badge-warn')
-  }, "\xC9cart : ", diff > 0 ? '+' : '', diff))), React.createElement("div", {
+  }, "\xC9cart : ", diff > 0 ? '+' : '', diff)), num > 0 && (packEquiv || totalWeight) && React.createElement("div", {
+    className: "txt-sm muted",
+    style: {
+      marginTop: 10,
+      lineHeight: 1.4
+    }
+  }, packEquiv && packEquiv.full > 0 && React.createElement("div", null, "= ", packEquiv.full, " pack", packEquiv.full > 1 ? 's' : '', " de ", packQty, packEquiv.rem > 0 ? ' + ' + packEquiv.rem + ' unité' + (packEquiv.rem > 1 ? 's' : '') : ''), packEquiv && packEquiv.full === 0 && packEquiv.rem > 0 && React.createElement("div", null, "= ", packEquiv.rem, " unit\xE9", packEquiv.rem > 1 ? 's' : '', " (moins d'un pack de ", packQty, ")"), totalWeight && React.createElement("div", null, "Soit ", totalWeight % 1 === 0 ? totalWeight : totalWeight.toFixed(2), " ", itemUnit, " au total"))), React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(3, 1fr)',
@@ -5446,6 +5822,38 @@ function Dashboard({
     session,
     history
   } = state;
+  const [editing, setEditing] = useState(null);
+  useEffect(() => {
+    if (state.pendingEdit) {
+      setEditing(state.pendingEdit);
+      setState(s => {
+        const n = {
+          ...s
+        };
+        delete n.pendingEdit;
+        return n;
+      });
+    }
+  }, [state.pendingEdit]);
+  const saveArticle = item => {
+    setState(s => {
+      const existing = (s.catalog || []).findIndex(it => it.id === item.id);
+      if (existing >= 0) {
+        const next = [...s.catalog];
+        next[existing] = item;
+        return {
+          ...s,
+          catalog: next
+        };
+      }
+      return {
+        ...s,
+        catalog: [...(s.catalog || []), item]
+      };
+    });
+    toast('Article enregistré au catalogue', 'meal');
+    setEditing(null);
+  };
   const alerts = useMemo(() => {
     const soon = [];
     for (const item of catalog) {
@@ -5596,6 +6004,56 @@ function Dashboard({
       marginBottom: 28
     }
   }, React.createElement("button", {
+    className: "card",
+    onClick: () => goto({
+      screen: 'scan',
+      from: 'home'
+    }),
+    style: {
+      padding: 18,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14,
+      background: 'var(--meal-soft)',
+      border: '1px solid var(--meal-dark)',
+      cursor: 'pointer',
+      textAlign: 'left'
+    }
+  }, React.createElement("div", {
+    style: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      background: 'var(--meal-dark)',
+      color: '#fff',
+      display: 'grid',
+      placeItems: 'center',
+      flexShrink: 0
+    }
+  }, React.createElement(Icon, {
+    name: "scan",
+    size: 24
+  })), React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, React.createElement("div", {
+    className: "bold",
+    style: {
+      fontSize: 16,
+      color: 'var(--meal-dark)'
+    }
+  }, "Scanner un produit"), React.createElement("div", {
+    className: "txt-sm",
+    style: {
+      color: 'var(--meal-dark)',
+      opacity: .8
+    }
+  }, "Code-barres \u2192 fiche auto-remplie")), React.createElement(Icon, {
+    name: "arrow-right",
+    size: 20,
+    color: "var(--meal-dark)"
+  })), React.createElement("button", {
     className: "card",
     onClick: () => goto({
       screen: 'contacts'
@@ -5760,7 +6218,38 @@ function Dashboard({
         marginTop: 6
       }
     }, session ? React.createElement(React.Fragment, null, p.counted, "/", p.total, " compt\xE9s") : React.createElement(React.Fragment, null, p.total, " article", p.total !== 1 ? 's' : '', " au catalogue"))));
-  })));
+  })), editing && React.createElement(ItemModal, {
+    item: editing.__new ? null : editing,
+    categories: categories,
+    locations: state.locations || [],
+    onSave: saveArticle,
+    onDelete: () => {
+      if (!confirm('Supprimer cet article du catalogue ?')) return;
+      setState(s => ({
+        ...s,
+        catalog: (s.catalog || []).filter(c => c.id !== editing.id)
+      }));
+      toast('Article supprimé', 'accent');
+      setEditing(null);
+    },
+    onAddCategory: newCat => {
+      setState(s => ({
+        ...s,
+        categories: [...s.categories, newCat]
+      }));
+    },
+    onAddLocation: loc => {
+      setState(s => {
+        const existing = s.locations || [];
+        if (existing.includes(loc)) return s;
+        return {
+          ...s,
+          locations: [...existing, loc]
+        };
+      });
+    },
+    onClose: () => setEditing(null)
+  }));
 }
 function AlertBanner({
   alerts,
@@ -5832,6 +6321,32 @@ function CategoriesScreen({
   } = state;
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
+  const catSeedIds = new Set((window.CATALOG_SEED || []).map(c => c.id));
+  const demoItemsCount = catalog.filter(it => catSeedIds.has(it.id)).length;
+  const demoActive = demoItemsCount > 0;
+  const disableDemo = () => {
+    if (!confirm('Retirer les ' + demoItemsCount + ' articles d\'exemple du catalogue ? Tes articles personnels ne seront pas touchés.')) return;
+    setState(s => {
+      const newCatalog = s.catalog.filter(it => !catSeedIds.has(it.id));
+      let newSession = s.session;
+      if (s.session && s.session.counts) {
+        const newCounts = {};
+        for (const k of Object.keys(s.session.counts)) {
+          if (!catSeedIds.has(k)) newCounts[k] = s.session.counts[k];
+        }
+        newSession = {
+          ...s.session,
+          counts: newCounts
+        };
+      }
+      return {
+        ...s,
+        catalog: newCatalog,
+        session: newSession
+      };
+    });
+    toast('Mode démo désactivé · ' + demoItemsCount + ' articles retirés', 'accent');
+  };
   const countByCat = Object.fromEntries(categories.map(c => [c.key, catalog.filter(it => it.cat === c.key).length]));
   const updateCat = (key, patch) => setState(s => ({
     ...s,
@@ -5866,7 +6381,56 @@ function CategoriesScreen({
     className: "page-title"
   }, "Cat\xE9gories"), React.createElement("p", {
     className: "page-sub"
-  }, "Organise tes stocks par type de produits. Tu peux en ajouter, renommer ou supprimer."), React.createElement("div", {
+  }, "Organise tes stocks par type de produits. Tu peux en ajouter, renommer ou supprimer."), demoActive && React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 16,
+      marginBottom: 20,
+      background: 'var(--warn-soft)',
+      borderColor: '#E8A03A55',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14,
+      flexWrap: 'wrap'
+    }
+  }, React.createElement("div", {
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      background: '#E8A03A',
+      color: '#fff',
+      display: 'grid',
+      placeItems: 'center',
+      flexShrink: 0,
+      fontSize: 22
+    }
+  }, "\uD83E\uDDEA"), React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 200
+    }
+  }, React.createElement("div", {
+    className: "bold",
+    style: {
+      fontSize: 15
+    }
+  }, "Mode d\xE9mo actif"), React.createElement("div", {
+    className: "txt-sm",
+    style: {
+      marginTop: 2,
+      color: 'var(--ink-2)'
+    }
+  }, demoItemsCount, " article", demoItemsCount > 1 ? 's' : '', " d'exemple", demoItemsCount > 1 ? 's' : '', " dans ton catalogue. Retire-les quand tu es pr\xEAt \xE0 saisir les vrais produits de l'association.")), React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: disableDemo,
+    style: {
+      whiteSpace: 'nowrap'
+    }
+  }, React.createElement(Icon, {
+    name: "trash",
+    size: 16
+  }), " D\xE9sactiver le mode d\xE9mo")), React.createElement("div", {
     style: {
       display: 'grid',
       gap: 12,
@@ -6489,11 +7053,12 @@ function App() {
       setState: setState,
       goto: goto,
       toast: pushToast,
-      fireConfetti: fireConfetti
+      fireConfetti: fireConfetti,
+      fromHome: route.from === 'home'
     });
     showBack = true;
     onBack = () => goto({
-      screen: 'session'
+      screen: route.from === 'home' || !state.session ? 'home' : 'session'
     });
   } else if (route.screen === 'contacts') {
     content = React.createElement(ContactsScreen, {
