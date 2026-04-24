@@ -420,29 +420,63 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .modal-close-btn:hover { background: var(--line); }
 
-/* v7.11 : approche simple et fiable - c'est le BACKDROP qui scroll,
-   la modale a sa hauteur naturelle. Marche dans tous les navigateurs,
-   pas de modal-in-modal ni de position:fixed superposés. */
+/* v7.16 : layout GRID pour la modale - plus fiable que flex sur Brave Android.
+   Grid template rows 'auto 1fr auto' garantit que body a une hauteur contrainte exacte,
+   contrairement à flex:1 min-height:0 qui peut être capricieux. */
 .modal-backdrop {
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch;
-  padding: 16px !important;
-  align-items: flex-start !important;  /* La modale commence en haut */
+  position: fixed !important;
+  inset: 0 !important;
+  overflow: hidden !important;
+  display: grid !important;
+  place-items: stretch !important;
+  padding: 0 !important;
+  z-index: 100;
 }
 @media (min-width: 720px) {
-  .modal-backdrop { padding: 24px !important; }
+  .modal-backdrop {
+    place-items: center !important;
+    padding: 24px !important;
+  }
 }
 .modal {
   position: relative !important;
-  max-height: none !important;
-  height: auto !important;
-  display: block !important;
-  margin: 0 auto !important;
-  border-radius: 20px !important;
   width: 100% !important;
-  max-width: 720px !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto 1fr auto !important;
+  grid-template-columns: 1fr !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
 }
-/* v7.14 : densification mobile - page-title moins massif, boutons compacts */
+@media (min-width: 720px) {
+  .modal {
+    max-width: 720px !important;
+    height: auto !important;
+    max-height: calc(100vh - 48px) !important;
+    border-radius: 24px !important;
+  }
+}
+.modal-head {
+  background: var(--white) !important;
+  z-index: 10;
+}
+.modal-body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  overscroll-behavior: contain !important;
+  min-height: 0 !important;
+}
+.modal-foot {
+  background: var(--white) !important;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
+  z-index: 10;
+}
+/* v7.14 : densification mobile */
 .page-title {
   font-size: clamp(22px, 4.5vw, 42px) !important;
   margin: 0 0 4px !important;
@@ -453,40 +487,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   line-height: 1.35 !important;
 }
 @media (max-width: 520px) {
-  .main {
-    padding: 18px 14px 80px !important;
-  }
-  .page-sub {
-    font-size: 14px !important;
-    margin-bottom: 16px !important;
-  }
-  .btn-lg {
-    padding: 12px 18px !important;
-    font-size: 15px !important;
-    border-radius: 14px !important;
-  }
-  .btn {
-    padding: 10px 14px !important;
-    font-size: 14px !important;
-  }
-  /* Pills de filtre plus petits */
-  .pill {
-    padding: 6px 12px !important;
-    font-size: 12px !important;
-  }
-}
-.modal-head {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 12;
-  background: var(--white) !important;
-}
-.modal-foot {
-  position: sticky !important;
-  bottom: 0 !important;
-  z-index: 12;
-  background: var(--white) !important;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
+  .main { padding: 18px 14px 80px !important; }
+  .page-sub { font-size: 14px !important; margin-bottom: 16px !important; }
+  .btn-lg { padding: 12px 18px !important; font-size: 15px !important; border-radius: 14px !important; }
+  .btn { padding: 10px 14px !important; font-size: 14px !important; }
+  .pill { padding: 6px 12px !important; font-size: 12px !important; }
 }
 
 </style>
@@ -4965,6 +4970,7 @@ function Section({
     style: {
       display: 'grid',
       gap: 10,
+      gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
       opacity: muted ? .65 : 1
     }
   }, events.map(render)));
@@ -5533,13 +5539,7 @@ function SessionScreen({
     onBump: d => bump(item.id, d, item.theo),
     onSet: v => setCount(item.id, v),
     onEdit: () => setEditing(item)
-  }))), React.createElement(FAB, {
-    onClick: () => setEditing({
-      __new: true
-    }),
-    label: "Nouvel article",
-    icon: "plus"
-  }), editing && React.createElement(ItemModal, {
+  }))), editing && React.createElement(ItemModal, {
     item: editing,
     presetCat: editing.__new ? editing.cat : undefined,
     categories: categories,
