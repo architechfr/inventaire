@@ -442,6 +442,39 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   width: 100% !important;
   max-width: 720px !important;
 }
+/* v7.14 : densification mobile - page-title moins massif, boutons compacts */
+.page-title {
+  font-size: clamp(22px, 4.5vw, 42px) !important;
+  margin: 0 0 4px !important;
+}
+.page-sub {
+  font-size: 15px !important;
+  margin: 0 0 20px !important;
+  line-height: 1.35 !important;
+}
+@media (max-width: 520px) {
+  .main {
+    padding: 18px 14px 80px !important;
+  }
+  .page-sub {
+    font-size: 14px !important;
+    margin-bottom: 16px !important;
+  }
+  .btn-lg {
+    padding: 12px 18px !important;
+    font-size: 15px !important;
+    border-radius: 14px !important;
+  }
+  .btn {
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+  }
+  /* Pills de filtre plus petits */
+  .pill {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+}
 .modal-head {
   position: sticky !important;
   top: 0 !important;
@@ -3902,13 +3935,14 @@ function ContactsScreen({
     className: "row",
     style: {
       flexWrap: 'wrap',
-      gap: 16,
-      marginBottom: 24
+      gap: 12,
+      marginBottom: 18,
+      alignItems: 'flex-end'
     }
   }, React.createElement("div", {
     style: {
       flex: 1,
-      minWidth: 240
+      minWidth: 200
     }
   }, React.createElement("h1", {
     className: "page-title",
@@ -3920,14 +3954,17 @@ function ContactsScreen({
     style: {
       margin: 0
     }
-  }, contacts.length, " personne", contacts.length !== 1 ? 's' : '', " enregistr\xE9e", contacts.length !== 1 ? 's' : '')), React.createElement("button", {
-    className: "btn btn-meal btn-lg",
+  }, contacts.length, " personne", contacts.length !== 1 ? 's' : '')), React.createElement("button", {
+    className: "btn btn-meal",
     onClick: () => setEditing({
       __new: true
-    })
+    }),
+    style: {
+      padding: '10px 16px'
+    }
   }, React.createElement(Icon, {
     name: "plus",
-    size: 20
+    size: 16
   }), " Ajouter")), React.createElement("div", {
     className: "row",
     style: {
@@ -4756,13 +4793,14 @@ function PlanningScreen({
     className: "row",
     style: {
       flexWrap: 'wrap',
-      gap: 16,
-      marginBottom: 24
+      gap: 12,
+      marginBottom: 18,
+      alignItems: 'flex-end'
     }
   }, React.createElement("div", {
     style: {
       flex: 1,
-      minWidth: 240
+      minWidth: 200
     }
   }, React.createElement("h1", {
     className: "page-title",
@@ -4774,34 +4812,45 @@ function PlanningScreen({
     style: {
       margin: 0
     }
-  }, events.length, " \xE9v\xE9nement", events.length !== 1 ? 's' : '', " \u2014 distributions, tourn\xE9es, r\xE9unions")), React.createElement("div", {
+  }, events.length, " \xE9v\xE9nement", events.length !== 1 ? 's' : '')), React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 8,
+      gap: 6,
       flexWrap: 'wrap'
     }
   }, events.length > 0 && !events.some(e => e._seed) && React.createElement("button", {
-    className: "btn btn-ghost btn-lg",
+    className: "btn btn-ghost",
     onClick: load2026Calendar,
-    title: "Ajouter les 19 distributions valid\xE9es \xE0 l'AG"
+    title: "Ajouter les 19 distributions valid\xE9es \xE0 l'AG",
+    style: {
+      padding: '8px 14px',
+      fontSize: 13
+    }
   }, React.createElement(Icon, {
     name: "plus",
-    size: 18
-  }), " Charger les distributions 2026"), events.length > 0 && React.createElement("button", {
-    className: "btn btn-ghost btn-lg",
+    size: 14
+  }), " Calendrier 2026"), events.length > 0 && React.createElement("button", {
+    className: "btn btn-ghost",
     onClick: exportAll,
-    title: "Exporter tout en ICS"
+    title: "Exporter tout en ICS",
+    style: {
+      padding: '8px 14px',
+      fontSize: 13
+    }
   }, React.createElement(Icon, {
     name: "clock",
-    size: 18
-  }), " Exporter tout (.ics)"), React.createElement("button", {
-    className: "btn btn-meal btn-lg",
+    size: 14
+  }), " Exporter .ics"), React.createElement("button", {
+    className: "btn btn-meal",
     onClick: () => setEditing({
       __new: true
-    })
+    }),
+    style: {
+      padding: '10px 16px'
+    }
   }, React.createElement(Icon, {
     name: "plus",
-    size: 20
+    size: 16
   }), " Nouvel \xE9v\xE9nement"))), events.length === 0 ? React.createElement(Empty, {
     icon: "clock",
     title: "Aucun \xE9v\xE9nement",
