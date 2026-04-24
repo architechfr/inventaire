@@ -420,61 +420,62 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .modal-close-btn:hover { background: var(--line); }
 
-/* v7.16 : layout GRID pour la modale - plus fiable que flex sur Brave Android.
-   Grid template rows 'auto 1fr auto' garantit que body a une hauteur contrainte exacte,
-   contrairement à flex:1 min-height:0 qui peut être capricieux. */
+/* v7.17 : modal via React Portal + scroll sur le backdrop entier.
+   Le backdrop est désormais enfant direct de <body> (Portal) donc
+   aucun stacking context parent ne peut le piéger ni bloquer le scroll touch. */
 .modal-backdrop {
   position: fixed !important;
   inset: 0 !important;
-  overflow: hidden !important;
-  display: grid !important;
-  place-items: stretch !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  overscroll-behavior: contain !important;
   padding: 0 !important;
-  z-index: 100;
+  z-index: 1000 !important;
 }
 @media (min-width: 720px) {
   .modal-backdrop {
-    place-items: center !important;
     padding: 24px !important;
+    align-items: center !important;
   }
 }
 .modal {
   position: relative !important;
   width: 100% !important;
   max-width: 100% !important;
-  height: 100% !important;
-  max-height: 100% !important;
-  overflow: hidden !important;
-  display: grid !important;
-  grid-template-rows: auto 1fr auto !important;
-  grid-template-columns: 1fr !important;
+  height: auto !important;
+  min-height: 100% !important;
   margin: 0 !important;
   border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 @media (min-width: 720px) {
   .modal {
     max-width: 720px !important;
-    height: auto !important;
-    max-height: calc(100vh - 48px) !important;
+    min-height: auto !important;
     border-radius: 24px !important;
+    margin: 0 auto !important;
   }
 }
 .modal-head {
-  background: var(--white) !important;
+  position: sticky !important;
+  top: 0 !important;
   z-index: 10;
-}
-.modal-body {
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
-  touch-action: pan-y !important;
-  overscroll-behavior: contain !important;
-  min-height: 0 !important;
+  background: var(--white) !important;
 }
 .modal-foot {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 10;
   background: var(--white) !important;
   box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
-  z-index: 10;
+}
+.modal-body {
+  overflow: visible !important;
 }
 /* v7.14 : densification mobile */
 .page-title {
@@ -1506,13 +1507,14 @@ function Modal({
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', h);
-    document.body.style.overflow = 'hidden';
+    const previousOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', h);
-      document.body.style.overflow = '';
+      document.documentElement.style.overflow = previousOverflow;
     };
   }, [onClose]);
-  return React.createElement("div", {
+  const content = React.createElement("div", {
     className: "modal-backdrop",
     onClick: onClose
   }, React.createElement("div", {
@@ -1537,6 +1539,7 @@ function Modal({
   }, children), footer && React.createElement("div", {
     className: "modal-foot"
   }, footer)));
+  return ReactDOM.createPortal(content, document.body);
 }
 function CategoryIcon({
   category,
