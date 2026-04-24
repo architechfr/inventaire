@@ -2301,16 +2301,40 @@ function ItemModal({
   onAddLocation,
   onClose
 }) {
-  const isNew = !item;
+  const isNew = !item || item.__new === true;
   const [form, setForm] = useState(() => {
-    if (item) return {
-      ...item,
-      lots: item.lots && item.lots.length ? item.lots : [{
-        id: 'lot-' + Date.now(),
-        dlc: '',
-        qty: 0
-      }]
-    };
+    if (item && !item.__new) {
+      return {
+        ...item,
+        lots: item.lots && item.lots.length ? item.lots : [{
+          id: 'lot-' + Date.now(),
+          dlc: '',
+          qty: 0
+        }]
+      };
+    }
+    if (item && item.__new) {
+      return {
+        id: 'new-' + Date.now(),
+        name: item.name || '',
+        brand: item.brand || '',
+        description: item.description || '',
+        weight: item.weight !== undefined ? item.weight : '',
+        unit: item.unit || 'g',
+        packQty: item.packQty || 1,
+        cat: item.cat || presetCat || categories[0]?.key,
+        location: item.location || '',
+        barcode: item.barcode || '',
+        notes: item.notes || '',
+        theo: item.theo || 0,
+        photo: item.photo || null,
+        lots: [{
+          id: 'lot-' + Date.now(),
+          dlc: '',
+          qty: 0
+        }]
+      };
+    }
     return {
       id: 'new-' + Date.now(),
       name: '',
@@ -5467,7 +5491,7 @@ function SessionScreen({
     label: "Nouvel article",
     icon: "plus"
   }), editing && React.createElement(ItemModal, {
-    item: editing.__new ? null : editing,
+    item: editing,
     presetCat: editing.__new ? editing.cat : undefined,
     categories: categories,
     locations: state.locations,
@@ -6219,7 +6243,7 @@ function Dashboard({
       }
     }, session ? React.createElement(React.Fragment, null, p.counted, "/", p.total, " compt\xE9s") : React.createElement(React.Fragment, null, p.total, " article", p.total !== 1 ? 's' : '', " au catalogue"))));
   })), editing && React.createElement(ItemModal, {
-    item: editing.__new ? null : editing,
+    item: editing,
     categories: categories,
     locations: state.locations || [],
     onSave: saveArticle,
