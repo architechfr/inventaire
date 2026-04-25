@@ -2428,10 +2428,16 @@ function ItemModal({
   const submit = opts => {
     if (!valid) return;
     const theo = form.lots.reduce((sum, l) => sum + (parseInt(l.qty, 10) || 0), 0);
+    const cleanLots = form.lots.map(l => ({
+      ...l,
+      qty: parseInt(l.qty, 10) || 0
+    }));
     const clean = {
       ...form,
-      theo: theo || form.theo,
-      weight: form.weight === '' ? '' : parseFloat(form.weight) || ''
+      packQty: !form.packQty || form.packQty === '' || form.packQty < 1 ? 1 : parseInt(form.packQty, 10),
+      theo: form.theo === '' || form.theo == null ? theo || 0 : theo || form.theo,
+      weight: form.weight === '' ? '' : parseFloat(form.weight) || '',
+      lots: cleanLots
     };
     if (form.location && !locations.includes(form.location)) onAddLocation(form.location);
     onSave(clean, opts);
@@ -2599,9 +2605,20 @@ function ItemModal({
     className: "input",
     type: "number",
     min: "1",
-    value: form.packQty,
+    value: form.packQty === '' ? '' : form.packQty == null ? '' : form.packQty,
     onFocus: e => e.target.select(),
-    onChange: e => update('packQty', parseInt(e.target.value) || 1),
+    onChange: e => {
+      const v = e.target.value;
+      if (v === '') {
+        update('packQty', '');
+        return;
+      }
+      const n = parseInt(v, 10);
+      if (!isNaN(n)) update('packQty', n);
+    },
+    onBlur: () => {
+      if (form.packQty === '' || !form.packQty || form.packQty < 1) update('packQty', 1);
+    },
     placeholder: "Ex : 6, 12, 24\u2026"
   }), (form.packQty > 1 || form.weight) && React.createElement("div", {
     style: {
