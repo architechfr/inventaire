@@ -439,58 +439,65 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .modal-close-btn:hover { background: var(--line); }
 
-/* v7.26 : modal scrolling simplifié au maximum.
-   Approche : backdrop = scroller unique (overflow-y auto, scroll touch natif).
-   La modale a sa hauteur naturelle, le contenu défile dans le backdrop.
-   Pas de min-height (qui forçait la modale à occuper tout l'écran et bloquait
-   le scroll sur Brave Android). Pas de sticky head/foot (qui cassaient aussi
-   le scroll dans certains contextes). */
+/* v7.27 : VRAIE solution scroll modal — flex column avec scroll DANS la modale.
+   Le backdrop fait toute la hauteur du viewport et la modale aussi (height 100vh
+   sur mobile / 100dvh quand supporté pour gérer la barre d'URL Brave qui se cache).
+   La modale est un flex column : head (flex-shrink: 0), body (flex: 1, overflow-y: auto),
+   foot (flex-shrink: 0). Le scroll est strictement contenu dans modal-body : pas de
+   conflit avec le scroll de page derrière, pas de problème de sticky.
+   Approche éprouvée et stable sur tous mobiles. */
 .modal-backdrop {
   position: fixed !important;
   inset: 0 !important;
   display: flex !important;
-  align-items: flex-start !important;
+  align-items: stretch !important;
   justify-content: center !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior: contain !important;
   padding: 0 !important;
   z-index: 1000 !important;
   background: rgba(0, 0, 0, 0.45) !important;
-}
-@media (min-width: 720px) {
-  .modal-backdrop {
-    padding: 24px !important;
-    align-items: flex-start !important;
-  }
+  overflow: hidden !important;
 }
 .modal {
   position: relative !important;
   width: 100% !important;
   max-width: 100% !important;
-  height: auto !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   margin: 0 !important;
   border-radius: 0 !important;
-  display: block !important;
+  display: flex !important;
+  flex-direction: column !important;
   background: var(--white) !important;
+  overflow: hidden !important;
 }
 @media (min-width: 720px) {
+  .modal-backdrop {
+    align-items: center !important;
+    padding: 24px !important;
+  }
   .modal {
     max-width: 720px !important;
+    height: auto !important;
+    max-height: calc(100vh - 48px) !important;
+    max-height: calc(100dvh - 48px) !important;
     border-radius: 24px !important;
     margin: 0 auto !important;
   }
 }
 .modal-head {
-  position: relative !important;
+  flex-shrink: 0 !important;
   background: var(--white) !important;
 }
 .modal-foot {
-  position: relative !important;
+  flex-shrink: 0 !important;
   background: var(--white) !important;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
 }
 .modal-body {
-  overflow: visible !important;
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
 }
 /* v7.14 : densification mobile */
 .page-title {
@@ -5820,7 +5827,24 @@ function SessionScreen({
   }, React.createElement(Icon, {
     name: "plus",
     size: 20
-  }), " Nouvel article")), React.createElement("div", {
+  }), " Nouvel article")), allItems.length > 0 && React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, React.createElement("button", {
+    className: selectMode ? "btn btn-meal btn-block" : "btn btn-ghost btn-block",
+    onClick: () => {
+      setSelectMode(m => !m);
+      setSelectedIds([]);
+    },
+    style: {
+      justifyContent: 'center',
+      fontSize: 14
+    }
+  }, React.createElement(Icon, {
+    name: "check",
+    size: 18
+  }), " ", selectMode ? 'Annuler la sélection' : 'Sélectionner plusieurs articles pour les déplacer')), React.createElement("div", {
     style: {
       overflowX: 'auto',
       marginBottom: 20,
@@ -6405,10 +6429,15 @@ function Dashboard({
     })
   }), session && React.createElement("div", {
     className: "card",
+    onClick: () => goto({
+      screen: 'session'
+    }),
     style: {
       padding: 24,
-      marginBottom: 24
-    }
+      marginBottom: 24,
+      cursor: 'pointer'
+    },
+    title: "Voir les articles de la session"
   }, React.createElement("div", {
     className: "row",
     style: {
@@ -6446,11 +6475,20 @@ function Dashboard({
     value: sessionCounted,
     total: sessionTotal
   }), React.createElement("div", {
-    className: "txt-sm muted",
+    className: "row",
     style: {
-      marginTop: 8
+      marginTop: 8,
+      justifyContent: 'space-between',
+      alignItems: 'center'
     }
-  }, "Plus que ", Math.max(0, sessionTotal - sessionCounted), " article", sessionTotal - sessionCounted !== 1 ? 's' : '', " \xE0 compter \uD83D\uDCAA")), React.createElement("div", {
+  }, React.createElement("div", {
+    className: "txt-sm muted"
+  }, "Plus que ", Math.max(0, sessionTotal - sessionCounted), " article", sessionTotal - sessionCounted !== 1 ? 's' : '', " \xE0 compter \uD83D\uDCAA"), React.createElement("div", {
+    className: "txt-sm bold",
+    style: {
+      color: 'var(--meal-dark)'
+    }
+  }, "Voir les articles \u2192"))), React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
