@@ -439,9 +439,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .modal-close-btn:hover { background: var(--line); }
 
-/* v7.17 : modal via React Portal + scroll sur le backdrop entier.
-   Le backdrop est désormais enfant direct de <body> (Portal) donc
-   aucun stacking context parent ne peut le piéger ni bloquer le scroll touch. */
+/* v7.26 : modal scrolling simplifié au maximum.
+   Approche : backdrop = scroller unique (overflow-y auto, scroll touch natif).
+   La modale a sa hauteur naturelle, le contenu défile dans le backdrop.
+   Pas de min-height (qui forçait la modale à occuper tout l'écran et bloquait
+   le scroll sur Brave Android). Pas de sticky head/foot (qui cassaient aussi
+   le scroll dans certains contextes). */
 .modal-backdrop {
   position: fixed !important;
   inset: 0 !important;
@@ -450,15 +453,15 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   justify-content: center !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
-  touch-action: pan-y !important;
   overscroll-behavior: contain !important;
   padding: 0 !important;
   z-index: 1000 !important;
+  background: rgba(0, 0, 0, 0.45) !important;
 }
 @media (min-width: 720px) {
   .modal-backdrop {
     padding: 24px !important;
-    align-items: center !important;
+    align-items: flex-start !important;
   }
 }
 .modal {
@@ -466,32 +469,25 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   width: 100% !important;
   max-width: 100% !important;
   height: auto !important;
-  min-height: 100% !important;
   margin: 0 !important;
   border-radius: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
+  display: block !important;
+  background: var(--white) !important;
 }
 @media (min-width: 720px) {
   .modal {
     max-width: 720px !important;
-    min-height: auto !important;
     border-radius: 24px !important;
     margin: 0 auto !important;
   }
 }
 .modal-head {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 10;
+  position: relative !important;
   background: var(--white) !important;
 }
 .modal-foot {
-  position: sticky !important;
-  bottom: 0 !important;
-  z-index: 10;
+  position: relative !important;
   background: var(--white) !important;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
 }
 .modal-body {
   overflow: visible !important;
@@ -2788,7 +2784,31 @@ function ItemModal({
       fontSize: 11,
       marginBottom: 6
     }
-  }, "Choisir une autre cat\xE9gorie"), React.createElement("div", {
+  }, "Choisir via menu d\xE9roulant"), React.createElement("select", {
+    className: "input",
+    value: form.cat || '',
+    onChange: e => {
+      update('cat', e.target.value);
+      setCatAutoDetected(false);
+    },
+    style: {
+      marginBottom: 14,
+      fontWeight: 600,
+      fontSize: 15,
+      height: 48
+    }
+  }, categories.map(c => React.createElement("option", {
+    key: c.key,
+    value: c.key
+  }, c.label))), React.createElement("div", {
+    className: "txt-sm muted bold",
+    style: {
+      textTransform: 'uppercase',
+      letterSpacing: '.04em',
+      fontSize: 11,
+      marginBottom: 6
+    }
+  }, "ou choisir visuellement"), React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
@@ -5542,6 +5562,25 @@ function SessionScreen({
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(catFilter || 'all');
   const [editing, setEditing] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showCatPicker, setShowCatPicker] = useState(false);
+  const toggleSelect = id => setSelectedIds(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const moveSelected = newCatKey => {
+    if (selectedIds.length === 0) return;
+    setState(s => ({
+      ...s,
+      catalog: (s.catalog || []).map(it => selectedIds.includes(it.id) ? {
+        ...it,
+        cat: newCatKey
+      } : it)
+    }));
+    const target = (state.categories || []).find(c => c.key === newCatKey);
+    toast(selectedIds.length + ' article' + (selectedIds.length > 1 ? 's' : '') + ' déplacé' + (selectedIds.length > 1 ? 's' : '') + ' vers ' + (target ? target.label : newCatKey), 'meal');
+    setSelectedIds([]);
+    setSelectMode(false);
+    setShowCatPicker(false);
+  };
   const [scanning, setScanning] = useState(false);
   useEffect(() => {
     if (catFilter) setFilter(catFilter);
@@ -5826,15 +5865,62 @@ function SessionScreen({
       display: 'grid',
       gap: 12
     }
-  }, filtered.map(item => React.createElement(ItemCard, {
-    key: item.id,
-    item: item,
-    category: catById[item.cat],
-    count: session.counts[item.id],
-    onBump: d => bump(item.id, d, item.theo),
-    onSet: v => setCount(item.id, v),
-    onEdit: () => setEditing(item)
-  }))), editing && React.createElement(ItemModal, {
+  }, filtered.map(item => {
+    const isSelected = selectedIds.includes(item.id);
+    if (selectMode) {
+      return React.createElement("div", {
+        key: item.id,
+        onClick: () => toggleSelect(item.id),
+        style: {
+          position: 'relative',
+          cursor: 'pointer',
+          border: isSelected ? '2px solid var(--meal)' : '2px solid transparent',
+          borderRadius: 16,
+          background: isSelected ? 'var(--meal-soft)' : 'transparent',
+          padding: 4,
+          transition: 'all .15s'
+        }
+      }, React.createElement("div", {
+        style: {
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          zIndex: 5,
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          background: isSelected ? 'var(--meal)' : '#fff',
+          border: '2px solid ' + (isSelected ? 'var(--meal)' : 'var(--line)'),
+          display: 'grid',
+          placeItems: 'center',
+          color: '#fff',
+          fontSize: 18,
+          fontWeight: 700,
+          pointerEvents: 'none'
+        }
+      }, isSelected ? '✓' : ''), React.createElement("div", {
+        style: {
+          pointerEvents: 'none'
+        }
+      }, React.createElement(ItemCard, {
+        item: item,
+        category: catById[item.cat],
+        count: session.counts[item.id],
+        onBump: () => {},
+        onSet: () => {},
+        onEdit: () => {}
+      })));
+    }
+    return React.createElement(ItemCard, {
+      key: item.id,
+      item: item,
+      category: catById[item.cat],
+      count: session.counts[item.id],
+      onBump: d => bump(item.id, d, item.theo),
+      onSet: v => setCount(item.id, v),
+      onEdit: () => setEditing(item)
+    });
+  })), editing && React.createElement(ItemModal, {
     item: editing,
     presetCat: editing.__new ? editing.cat : undefined,
     categories: categories,
