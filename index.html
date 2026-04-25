@@ -1500,7 +1500,8 @@ function Modal({
   onClose,
   children,
   footer,
-  wide
+  wide,
+  headerAction
 }) {
   useEffect(() => {
     const h = e => {
@@ -1527,7 +1528,7 @@ function Modal({
     className: "modal-head"
   }, React.createElement("h3", {
     className: "modal-title"
-  }, title), React.createElement("button", {
+  }, title), headerAction, React.createElement("button", {
     className: "modal-close-btn",
     onClick: onClose,
     "aria-label": "Fermer et revenir"
@@ -2399,6 +2400,7 @@ function ItemModal({
   });
   const [newCat, setNewCat] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [catAutoDetected, setCatAutoDetected] = useState(() => !!(item && item.__new && item.cat));
   const update = (k, v) => setForm(f => ({
     ...f,
     [k]: v
@@ -2604,7 +2606,24 @@ function ItemModal({
     className: "field"
   }, React.createElement("label", null, "Cat\xE9gorie ", React.createElement("span", {
     className: "req"
-  }, "*")), !newCat ? React.createElement("div", {
+  }, "*")), catAutoDetected && React.createElement("div", {
+    style: {
+      padding: '10px 14px',
+      marginBottom: 10,
+      background: 'var(--meal-soft)',
+      border: '1px solid var(--meal-dark)',
+      borderRadius: 12,
+      fontSize: 13,
+      color: 'var(--meal-dark)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8
+    }
+  }, React.createElement("span", {
+    style: {
+      fontSize: 16
+    }
+  }, "\uD83D\uDD0D"), React.createElement("span", null, React.createElement("b", null, "Cat\xE9gorie d\xE9tect\xE9e par Open Food Facts."), " Modifie en s\xE9lectionnant une autre option ci-dessous si n\xE9cessaire.")), !newCat ? React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -2613,7 +2632,10 @@ function ItemModal({
   }, categories.map(c => React.createElement("button", {
     key: c.key,
     type: "button",
-    onClick: () => update('cat', c.key),
+    onClick: () => {
+      update('cat', c.key);
+      setCatAutoDetected(false);
+    },
     style: {
       padding: '10px 14px',
       borderRadius: 14,
@@ -6948,7 +6970,34 @@ function SettingsModal({
       display: 'grid',
       gap: 12
     }
-  }, React.createElement("button", {
+  }, React.createElement("div", {
+    className: "txt-sm muted bold",
+    style: {
+      textTransform: 'uppercase',
+      letterSpacing: '.04em',
+      marginTop: 4
+    }
+  }, "Export & rapports"), React.createElement("button", {
+    className: "btn btn-ghost btn-lg btn-block",
+    onClick: () => window.exportInventoryCSV(state, toast),
+    disabled: !state.catalog || state.catalog.length === 0
+  }, "\uD83D\uDCCA Exporter en Excel (.csv)"), React.createElement("button", {
+    className: "btn btn-ghost btn-lg btn-block",
+    onClick: () => window.exportInventoryHTML(state, toast),
+    disabled: !state.catalog || state.catalog.length === 0
+  }, "\uD83D\uDCC4 Rapport HTML imprimable"), React.createElement("div", {
+    className: "txt-sm muted",
+    style: {
+      padding: '0 4px',
+      lineHeight: 1.4
+    }
+  }, "Le CSV s'ouvre avec Excel ou LibreOffice. Le rapport HTML est mis en page pour \xEAtre imprim\xE9 ou partag\xE9."), React.createElement("div", {
+    style: {
+      height: 1,
+      background: 'var(--line)',
+      margin: '8px 0'
+    }
+  }), React.createElement("button", {
     className: "btn btn-ghost btn-lg btn-block",
     onClick: endSession,
     disabled: !state.session
@@ -7199,6 +7248,163 @@ function App() {
   }));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App, null));
+function _triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+function _todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+function _escapeCSV(v) {
+  const s = String(v == null ? '' : v);
+  if (s.includes(';') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+function _escapeHTML(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function exportInventoryCSV(state, toast) {
+  const {
+    catalog,
+    categories
+  } = state;
+  if (!catalog || catalog.length === 0) {
+    toast && toast('Catalogue vide, rien à exporter', 'accent');
+    return;
+  }
+  const headers = ['Nom', 'Marque', 'Description', 'Catégorie', 'Emplacement', 'Volume/poids unitaire', 'Unité', 'Unités par pack', 'Stock théorique', 'Stock réel (somme lots)', 'Nb lots actifs', 'DLC la plus proche', 'Code-barres', 'Notes'];
+  const rows = catalog.map(item => {
+    const cat = categories.find(c => c.key === item.cat);
+    const lots = (item.lots || []).filter(l => (l.qty || 0) > 0 || l.dlc);
+    const totalQty = lots.reduce((s, l) => s + (parseInt(l.qty) || 0), 0);
+    const validDlcs = lots.filter(l => l.dlc).map(l => l.dlc).sort();
+    return [item.name || '', item.brand || '', item.description || '', cat ? cat.label : item.cat || '', item.location || '', item.weight || '', item.unit || '', item.packQty || 1, item.theo || 0, totalQty, lots.length, validDlcs[0] || '', item.barcode || '', (item.notes || '').replace(/[\r\n]+/g, ' ')];
+  });
+  const csv = '\uFEFF' + [headers.map(_escapeCSV).join(';'), ...rows.map(r => r.map(_escapeCSV).join(';'))].join('\r\n');
+  const blob = new Blob([csv], {
+    type: 'text/csv;charset=utf-8;'
+  });
+  _triggerDownload(blob, 'MEAL_Repas_inventaire_' + _todayISO() + '.csv');
+  toast && toast(catalog.length + ' articles exportés en CSV (ouvrable avec Excel)', 'meal');
+}
+function exportInventoryHTML(state, toast) {
+  const {
+    catalog,
+    categories
+  } = state;
+  if (!catalog || catalog.length === 0) {
+    toast && toast('Catalogue vide, rien à exporter', 'accent');
+    return;
+  }
+  const now = new Date();
+  const today = now.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  const todayISO = _todayISO();
+  const today0 = new Date(now.toDateString());
+  const totalArticles = catalog.length;
+  let totalLotsActifs = 0;
+  let totalUnits = 0;
+  for (const c of catalog) {
+    for (const l of c.lots || []) {
+      if ((l.qty || 0) > 0) {
+        totalLotsActifs++;
+        totalUnits += parseInt(l.qty) || 0;
+      }
+    }
+  }
+  const byCat = {};
+  for (const item of catalog) {
+    const k = item.cat || '__autre';
+    if (!byCat[k]) byCat[k] = [];
+    byCat[k].push(item);
+  }
+  const soon = [];
+  const expired = [];
+  for (const item of catalog) {
+    for (const lot of item.lots || []) {
+      if (!lot.dlc || (lot.qty || 0) === 0) continue;
+      const d = new Date(lot.dlc);
+      const days = Math.round((d - today0) / 86400000);
+      const entry = {
+        item,
+        lot,
+        days
+      };
+      if (days < 0) expired.push(entry);else if (days <= 30) soon.push(entry);
+    }
+  }
+  soon.sort((a, b) => a.days - b.days);
+  expired.sort((a, b) => a.days - b.days);
+  const lowStock = [];
+  for (const item of catalog) {
+    if (!item.theo || item.theo <= 0) continue;
+    const total = (item.lots || []).reduce((s, l) => s + (parseInt(l.qty) || 0), 0);
+    if (total < item.theo * 0.25) {
+      lowStock.push({
+        item,
+        total
+      });
+    }
+  }
+  const fmtDate = s => {
+    if (!s) return '—';
+    try {
+      return new Date(s).toLocaleDateString('fr-FR');
+    } catch (e) {
+      return s;
+    }
+  };
+  const fmtUnit = item => {
+    const u = item.unit || '';
+    return item.weight ? item.weight + ' ' + u : '—';
+  };
+  const fmtTotal = item => {
+    return (item.lots || []).reduce((s, l) => s + (parseInt(l.qty) || 0), 0);
+  };
+  const tableForItems = items => {
+    if (!items || items.length === 0) return '<p class="empty">Aucun article.</p>';
+    const rows = items.map(item => {
+      const dlcs = (item.lots || []).filter(l => l.dlc).map(l => l.dlc).sort();
+      const total = fmtTotal(item);
+      const ecartCls = item.theo ? total === item.theo ? 'ok' : total > item.theo ? 'over' : 'under' : '';
+      return '<tr>' + '<td><b>' + _escapeHTML(item.name) + '</b>' + (item.brand ? '<br><span class="muted">' + _escapeHTML(item.brand) + '</span>' : '') + '</td>' + '<td>' + _escapeHTML(fmtUnit(item)) + (item.packQty > 1 ? ' <span class="muted">(×' + item.packQty + ')</span>' : '') + '</td>' + '<td class="num">' + (item.theo || 0) + '</td>' + '<td class="num ' + ecartCls + '">' + total + '</td>' + '<td>' + _escapeHTML(item.location || '—') + '</td>' + '<td>' + _escapeHTML(fmtDate(dlcs[0])) + '</td>' + '</tr>';
+    }).join('');
+    return '<table class="t"><thead><tr>' + '<th>Article</th><th>Conditionnement</th><th>Théorique</th><th>Réel</th><th>Emplacement</th><th>DLC proche</th>' + '</tr></thead><tbody>' + rows + '</tbody></table>';
+  };
+  const sectionsByCat = categories.map(c => {
+    const items = (byCat[c.key] || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (items.length === 0) return '';
+    return '<section class="cat" id="cat-' + _escapeHTML(c.key) + '">' + '<h2 style="border-left: 6px solid ' + _escapeHTML(c.color || '#888') + '">' + _escapeHTML(c.label) + ' <span class="cnt">' + items.length + '</span></h2>' + tableForItems(items) + '</section>';
+  }).filter(Boolean).join('');
+  const otherItems = byCat['__autre'] || [];
+  const sectionOther = otherItems.length > 0 ? '<section class="cat"><h2>Sans catégorie <span class="cnt">' + otherItems.length + '</span></h2>' + tableForItems(otherItems) + '</section>' : '';
+  const sectionAlerts = expired.length > 0 || soon.length > 0 || lowStock.length > 0 ? '<section class="alerts">' + '<h2>⚠️ Points d\'attention</h2>' + (expired.length > 0 ? '<h3 style="color:#C0392B">Lots périmés (' + expired.length + ')</h3>' + '<table class="t"><thead><tr><th>Article</th><th>Marque</th><th>DLC</th><th>Quantité</th><th>Retard</th></tr></thead><tbody>' + expired.map(e => '<tr><td><b>' + _escapeHTML(e.item.name) + '</b></td><td>' + _escapeHTML(e.item.brand || '') + '</td><td>' + fmtDate(e.lot.dlc) + '</td><td class="num">' + (e.lot.qty || 0) + '</td><td class="num" style="color:#C0392B">' + Math.abs(e.days) + ' j</td></tr>').join('') + '</tbody></table>' : '') + (soon.length > 0 ? '<h3 style="color:#C67A0D">Lots à utiliser sous 30 jours (' + soon.length + ')</h3>' + '<table class="t"><thead><tr><th>Article</th><th>Marque</th><th>DLC</th><th>Quantité</th><th>Reste</th></tr></thead><tbody>' + soon.map(e => '<tr><td><b>' + _escapeHTML(e.item.name) + '</b></td><td>' + _escapeHTML(e.item.brand || '') + '</td><td>' + fmtDate(e.lot.dlc) + '</td><td class="num">' + (e.lot.qty || 0) + '</td><td class="num">' + e.days + ' j</td></tr>').join('') + '</tbody></table>' : '') + (lowStock.length > 0 ? '<h3 style="color:#C67A0D">Stocks faibles (' + lowStock.length + ' articles &lt; 25% du théorique)</h3>' + '<table class="t"><thead><tr><th>Article</th><th>Catégorie</th><th>Théorique</th><th>Réel</th></tr></thead><tbody>' + lowStock.map(e => {
+    const cat = categories.find(c => c.key === e.item.cat);
+    return '<tr><td><b>' + _escapeHTML(e.item.name) + '</b></td><td>' + _escapeHTML(cat ? cat.label : '') + '</td><td class="num">' + (e.item.theo || 0) + '</td><td class="num under">' + e.total + '</td></tr>';
+  }).join('') + '</tbody></table>' : '') + '</section>' : '';
+  const html = '<!DOCTYPE html>\n<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inventaire MEAL Repas — ' + todayISO + '</title><style>' + '*{box-sizing:border-box}' + 'body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#FAF6EE;color:#2A2A2A;line-height:1.5}' + '.wrap{max-width:1100px;margin:0 auto;padding:24px}' + 'header{background:linear-gradient(135deg,#5A6B3A,#3F4D26);color:#fff;padding:30px 24px;border-radius:18px;margin-bottom:24px}' + 'header h1{margin:0;font-size:28px;font-family:Georgia,serif;font-weight:600}' + 'header .sub{opacity:.85;margin-top:6px;font-size:15px}' + '.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:18px 0 28px}' + '.stat{background:#fff;padding:18px;border-radius:14px;border:1px solid #E5DCC8}' + '.stat .v{font-size:28px;font-weight:700;color:#5A6B3A}' + '.stat .l{font-size:13px;color:#666;text-transform:uppercase;letter-spacing:.04em;margin-top:4px}' + 'nav.toc{background:#fff;padding:14px 18px;border-radius:14px;border:1px solid #E5DCC8;margin-bottom:24px}' + 'nav.toc strong{display:block;margin-bottom:8px}' + 'nav.toc a{display:inline-block;padding:5px 11px;margin:2px;border-radius:8px;background:#F0E9D6;color:#3F4D26;text-decoration:none;font-size:13px;font-weight:600}' + 'nav.toc a:hover{background:#5A6B3A;color:#fff}' + 'section.cat{background:#fff;padding:20px 24px;border-radius:14px;margin-bottom:18px;border:1px solid #E5DCC8}' + 'section.cat h2{margin:0 0 14px;padding-left:14px;font-size:20px}' + '.cnt{display:inline-block;background:#F0E9D6;color:#3F4D26;padding:2px 10px;border-radius:99px;font-size:13px;margin-left:8px;vertical-align:middle}' + 'section.alerts{background:#FFF5E5;padding:20px 24px;border-radius:14px;margin-bottom:18px;border:1px solid #E8A03A55}' + 'section.alerts h2{margin:0 0 14px;font-size:20px;color:#C67A0D}' + 'section.alerts h3{font-size:15px;margin:18px 0 8px}' + 'table.t{width:100%;border-collapse:collapse;font-size:14px}' + 'table.t th{background:#F5EFE0;padding:10px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#666;font-weight:600}' + 'table.t td{padding:10px 12px;border-top:1px solid #E5DCC8;vertical-align:top}' + 'table.t .num{text-align:right;font-variant-numeric:tabular-nums}' + 'table.t .ok{color:#5A6B3A;font-weight:700}' + 'table.t .over{color:#2A7BB5;font-weight:700}' + 'table.t .under{color:#C0392B;font-weight:700}' + '.muted{color:#888;font-size:12px}' + '.empty{text-align:center;color:#888;padding:20px;font-style:italic}' + 'footer{text-align:center;color:#888;font-size:13px;margin:30px 0 10px}' + '@media print{body{background:#fff}.wrap{max-width:100%;padding:0}header,section.cat,section.alerts,nav.toc,.stat{break-inside:avoid;box-shadow:none}nav.toc{display:none}}' + '</style></head><body><div class="wrap">' + '<header><h1>Inventaire — MEAL Repas</h1><div class="sub">Rapport généré le ' + today + ' · Ferrières-en-Brie</div></header>' + '<div class="stats">' + '<div class="stat"><div class="v">' + totalArticles + '</div><div class="l">Articles</div></div>' + '<div class="stat"><div class="v">' + totalLotsActifs + '</div><div class="l">Lots actifs</div></div>' + '<div class="stat"><div class="v">' + totalUnits + '</div><div class="l">Unités totales</div></div>' + '<div class="stat"><div class="v" style="color:#C67A0D">' + (expired.length + soon.length) + '</div><div class="l">DLC à surveiller</div></div>' + '</div>' + '<nav class="toc"><strong>Aller à :</strong>' + (expired.length + soon.length + lowStock.length > 0 ? '<a href="#alerts">Points d\'attention</a>' : '') + categories.filter(c => byCat[c.key] && byCat[c.key].length > 0).map(c => '<a href="#cat-' + _escapeHTML(c.key) + '">' + _escapeHTML(c.label) + '</a>').join('') + '</nav>' + (sectionAlerts ? '<div id="alerts"></div>' + sectionAlerts : '') + sectionsByCat + sectionOther + '<footer>MEAL Repas · Place Auguste Trézy, 24 rue Jean Jaurès · 77164 Ferrières-en-Brie<br>Document généré par l\'application MEAL Repas Inventaire — ' + today + '</footer>' + '</div></body></html>';
+  const blob = new Blob([html], {
+    type: 'text/html;charset=utf-8;'
+  });
+  _triggerDownload(blob, 'MEAL_Repas_rapport_' + todayISO + '.html');
+  toast && toast('Rapport HTML généré (' + totalArticles + ' articles)', 'meal');
+}
+window.exportInventoryCSV = exportInventoryCSV;
+window.exportInventoryHTML = exportInventoryHTML;
 </script>
 </body>
 </html>
