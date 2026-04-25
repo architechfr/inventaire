@@ -5653,28 +5653,11 @@ function SessionScreen({
             ...item
           } : c)
         };
-      } else {
-        const inAdded = (s.session.addedItems || []).find(c => c.id === item.id);
-        if (inAdded) {
-          return {
-            ...s,
-            session: {
-              ...s.session,
-              addedItems: s.session.addedItems.map(c => c.id === item.id ? {
-                ...c,
-                ...item
-              } : c)
-            }
-          };
-        }
-        return {
-          ...s,
-          session: {
-            ...s.session,
-            addedItems: [...(s.session.addedItems || []), item]
-          }
-        };
       }
+      return {
+        ...s,
+        catalog: [...s.catalog, item]
+      };
     });
     toast('Article enregistré 🌟');
     if (!addAnother) setEditing(null);else setEditing({
