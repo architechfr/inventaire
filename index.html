@@ -2518,7 +2518,7 @@ function ItemModal({
         ...(info.packQty ? {
           packQty: info.packQty
         } : {}),
-        ...(info.cat ? {
+        ...(!presetCat && info.cat ? {
           cat: info.cat
         } : {}),
         ...(info.photo ? {
@@ -2590,19 +2590,30 @@ function ItemModal({
     value: u
   }, u))))), React.createElement("div", {
     className: "field"
-  }, React.createElement("label", null, "Bouteilles / unit\xE9s par pack"), React.createElement("input", {
+  }, React.createElement("label", null, "Unit\xE9s par pack ", React.createElement("span", {
+    className: "muted",
+    style: {
+      fontWeight: 400
+    }
+  }, "(laisse \xE0 1 pour vente \xE0 l'unit\xE9)")), React.createElement("input", {
     className: "input",
     type: "number",
     min: "1",
     value: form.packQty,
+    onFocus: e => e.target.select(),
     onChange: e => update('packQty', parseInt(e.target.value) || 1),
-    placeholder: "Ex : 6 pour un pack d'eau"
-  }), React.createElement("div", {
-    className: "txt-sm muted",
+    placeholder: "Ex : 6, 12, 24\u2026"
+  }), (form.packQty > 1 || form.weight) && React.createElement("div", {
     style: {
-      marginTop: 4
+      marginTop: 8,
+      padding: '10px 12px',
+      background: 'var(--cream-deep)',
+      borderRadius: 10,
+      fontSize: 13,
+      lineHeight: 1.5,
+      color: 'var(--ink-2)'
     }
-  }, "Pack de 6 bouteilles d'1,5 L \u2192 saisir ", React.createElement("b", null, "1,5"), " en volume unitaire et ", React.createElement("b", null, "6"), " ici. Laisser \xE0 1 pour les articles \xE0 l'unit\xE9."))), React.createElement("div", {
+  }, React.createElement("div", null, React.createElement("b", null, "R\xE9capitulatif du conditionnement :")), form.weight ? React.createElement("div", null, "\u2022 1 unit\xE9 = ", React.createElement("b", null, form.weight, " ", form.unit || '')) : React.createElement("div", null, "\u2022 1 unit\xE9 (poids/volume non pr\xE9cis\xE9)"), form.packQty > 1 && React.createElement("div", null, "\u2022 1 pack = ", React.createElement("b", null, form.packQty, " unit\xE9s"), form.weight ? ' = ' + (parseFloat(form.weight) * form.packQty).toFixed(2).replace(/\.?0+$/, '') + ' ' + (form.unit || '') + ' au total' : '')))), React.createElement("div", {
     className: "field"
   }, React.createElement("label", null, "Cat\xE9gorie ", React.createElement("span", {
     className: "req"
@@ -3015,14 +3026,10 @@ function ScanScreen({
       return;
     }
     if (match) {
-      toast('Article déjà au catalogue : ouverture de la fiche', 'meal');
-      setState(s => ({
-        ...s,
-        pendingEdit: match
-      }));
-      goto({
-        screen: fromHome ? 'home' : 'session'
-      });
+      setMatched(match);
+      const current = state.session && state.session.counts && state.session.counts[match.id];
+      setQty(current !== undefined ? current : match.theo || 0);
+      setMode('duplicate');
       return;
     }
     setMode('lookup');
@@ -3178,7 +3185,7 @@ function ScanScreen({
     style: {
       margin: '2px 0 0'
     }
-  }, mode === 'result' ? 'Article trouvé' : mode === 'lookup' ? 'Recherche en ligne…' : 'Scanner un code-barres'))), mode === 'init' && React.createElement("div", {
+  }, mode === 'result' ? 'Article trouvé' : mode === 'duplicate' ? 'Cet article existe déjà' : mode === 'lookup' ? 'Recherche en ligne…' : 'Scanner un code-barres'))), mode === 'init' && React.createElement("div", {
     className: "card",
     style: {
       padding: 28,
@@ -3389,7 +3396,93 @@ function ScanScreen({
       background: 'var(--meal-dark)',
       animation: 'indet 1.2s ease-in-out infinite'
     }
-  }))), React.createElement("style", null, `@keyframes indet { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }`)), mode === 'result' && matched && React.createElement("div", {
+  }))), React.createElement("style", null, `@keyframes indet { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }`)), mode === 'duplicate' && matched && React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 28,
+      maxWidth: 560,
+      margin: '0 auto'
+    }
+  }, React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      marginBottom: 16,
+      paddingBottom: 20,
+      borderBottom: '1px solid var(--line)'
+    }
+  }, React.createElement(CategoryIcon, {
+    category: matched.cat,
+    size: 56
+  }), React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, React.createElement("div", {
+    className: "bold",
+    style: {
+      fontSize: 19,
+      color: 'var(--ink)'
+    }
+  }, matched.name), matched.brand && React.createElement("div", {
+    className: "muted",
+    style: {
+      fontSize: 14
+    }
+  }, matched.brand, matched.weight ? ' · ' + matched.weight + ' ' + (matched.unit || '') : ''), matched.location && React.createElement("div", {
+    className: "txt-sm muted",
+    style: {
+      marginTop: 2
+    }
+  }, "\uD83D\uDCCD ", matched.location))), React.createElement("div", {
+    className: "card",
+    style: {
+      background: 'var(--meal-soft)',
+      border: '1px solid var(--meal-dark)',
+      padding: 14,
+      marginBottom: 18,
+      fontSize: 14,
+      color: 'var(--meal-dark)'
+    }
+  }, React.createElement("b", null, "\u2713 Cet article est d\xE9j\xE0 dans ton catalogue."), React.createElement("br", null), "Aucun doublon ne sera cr\xE9\xE9. Choisis ce que tu veux faire :"), React.createElement("div", {
+    style: {
+      display: 'grid',
+      gap: 10
+    }
+  }, React.createElement("button", {
+    className: "btn btn-meal btn-lg btn-block",
+    onClick: () => setMode('result')
+  }, React.createElement(Icon, {
+    name: "plus",
+    size: 20
+  }), " Compter le stock de cet article"), React.createElement("button", {
+    className: "btn btn-ghost btn-block",
+    onClick: () => {
+      setState(s => ({
+        ...s,
+        pendingEdit: matched
+      }));
+      goto({
+        screen: fromHome ? 'home' : 'session'
+      });
+    }
+  }, React.createElement(Icon, {
+    name: "edit",
+    size: 18
+  }), " Ouvrir la fiche pour la modifier"), React.createElement("button", {
+    className: "btn btn-ghost btn-block",
+    onClick: () => {
+      setMode('init');
+      setMatched(null);
+      setDetected(null);
+      startCam();
+    }
+  }, React.createElement(Icon, {
+    name: "scan",
+    size: 18
+  }), " Scanner un autre code-barres"))), mode === 'result' && matched && React.createElement("div", {
     className: "card",
     style: {
       padding: 28,
@@ -6419,6 +6512,26 @@ function CategoriesScreen({
   } = state;
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [managing, setManaging] = useState(null);
+  const moveItems = (itemIds, newCatKey) => {
+    setState(s => ({
+      ...s,
+      catalog: (s.catalog || []).map(it => itemIds.includes(it.id) ? {
+        ...it,
+        cat: newCatKey
+      } : it)
+    }));
+    const target = (state.categories || []).find(c => c.key === newCatKey);
+    toast(itemIds.length + ' article' + (itemIds.length > 1 ? 's' : '') + ' déplacé' + (itemIds.length > 1 ? 's' : '') + ' vers ' + (target ? target.label : newCatKey), 'meal');
+  };
+  const removeFromCatalog = itemIds => {
+    if (!confirm('Supprimer ' + itemIds.length + ' article' + (itemIds.length > 1 ? 's' : '') + ' du catalogue ? Cette action est irréversible.')) return;
+    setState(s => ({
+      ...s,
+      catalog: (s.catalog || []).filter(it => !itemIds.includes(it.id))
+    }));
+    toast(itemIds.length + ' article' + (itemIds.length > 1 ? 's' : '') + ' supprimé' + (itemIds.length > 1 ? 's' : ''), 'accent');
+  };
   const catSeedIds = new Set((window.CATALOG_SEED || []).map(c => c.id));
   const demoItemsCount = catalog.filter(it => catSeedIds.has(it.id)).length;
   const demoActive = demoItemsCount > 0;
@@ -6535,43 +6648,67 @@ function CategoriesScreen({
       gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
       marginBottom: 24
     }
-  }, categories.map(cat => React.createElement("div", {
-    key: cat.key,
-    className: "card",
-    style: {
-      padding: 16,
-      display: 'flex',
-      gap: 14,
-      alignItems: 'center'
-    }
-  }, React.createElement(CategoryIcon, {
-    category: cat,
-    size: 28
-  }), React.createElement("div", {
-    className: "grow"
-  }, React.createElement("div", {
-    className: "bold",
-    style: {
-      fontSize: 16
-    }
-  }, cat.label), React.createElement("div", {
-    className: "txt-sm muted"
-  }, countByCat[cat.key] || 0, " article", countByCat[cat.key] > 1 ? 's' : '')), React.createElement("button", {
-    className: "iconbtn",
-    onClick: () => setEditing(cat)
-  }, React.createElement(Icon, {
-    name: "edit",
-    size: 18
+  }, categories.map(cat => {
+    const count = countByCat[cat.key] || 0;
+    return React.createElement("div", {
+      key: cat.key,
+      className: "card",
+      style: {
+        padding: 16,
+        display: 'flex',
+        gap: 12,
+        alignItems: 'center'
+      }
+    }, React.createElement("button", {
+      onClick: () => count > 0 && setManaging(cat),
+      disabled: count === 0,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+        minWidth: 0,
+        background: 'none',
+        border: 0,
+        padding: 0,
+        cursor: count > 0 ? 'pointer' : 'default',
+        textAlign: 'left'
+      },
+      title: count > 0 ? 'Voir et organiser les articles' : 'Aucun article dans cette catégorie'
+    }, React.createElement(CategoryIcon, {
+      category: cat,
+      size: 28
+    }), React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, React.createElement("div", {
+      className: "bold",
+      style: {
+        fontSize: 16
+      }
+    }, cat.label), React.createElement("div", {
+      className: "txt-sm muted"
+    }, count, " article", count > 1 ? 's' : '', count > 0 ? ' · cliquer pour gérer' : ''))), React.createElement("button", {
+      className: "iconbtn",
+      onClick: () => setEditing(cat),
+      title: "Renommer / changer l'ic\xF4ne"
+    }, React.createElement(Icon, {
+      name: "edit",
+      size: 18
+    })), React.createElement("button", {
+      className: "iconbtn",
+      onClick: () => removeCat(cat.key),
+      style: {
+        color: 'var(--danger)'
+      },
+      title: "Supprimer la cat\xE9gorie"
+    }, React.createElement(Icon, {
+      name: "trash",
+      size: 18
+    })));
   })), React.createElement("button", {
-    className: "iconbtn",
-    onClick: () => removeCat(cat.key),
-    style: {
-      color: 'var(--danger)'
-    }
-  }, React.createElement(Icon, {
-    name: "trash",
-    size: 18
-  }))))), React.createElement("button", {
     className: "btn btn-primary btn-lg",
     onClick: () => setCreating(true)
   }, React.createElement(Icon, {
@@ -6589,6 +6726,16 @@ function CategoriesScreen({
     cat: null,
     onSave: addCat,
     onClose: () => setCreating(false)
+  }), managing && React.createElement(CategoryItemsModal, {
+    category: managing,
+    allCategories: categories,
+    items: catalog.filter(it => it.cat === managing.key),
+    onMove: moveItems,
+    onDelete: removeFromCatalog,
+    onEditItem: it => {
+      setManaging(null);
+    },
+    onClose: () => setManaging(null)
   }));
 }
 function CatEditModal({
@@ -7103,10 +7250,267 @@ function SettingsModal({
     }
   }, "MEAL Repas \xB7 v2.0 \xB7 Donn\xE9es stock\xE9es localement"));
 }
+function CategoryItemsModal({
+  category,
+  allCategories,
+  items,
+  onMove,
+  onDelete,
+  onClose
+}) {
+  const [selected, setSelected] = useState([]);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const sortedItems = [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const otherCategories = allCategories.filter(c => c.key !== category.key);
+  const toggle = id => {
+    setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  };
+  const allSelected = selected.length > 0 && selected.length === items.length;
+  const toggleAll = () => setSelected(allSelected ? [] : items.map(i => i.id));
+  const handleMove = newCatKey => {
+    onMove(selected, newCatKey);
+    setSelected([]);
+    setShowMoveMenu(false);
+    if (items.length === selected.length) onClose();
+  };
+  const moveOne = (itemId, newCatKey) => {
+    onMove([itemId], newCatKey);
+  };
+  return React.createElement(Modal, {
+    title: category.label + ' · ' + items.length + ' article' + (items.length > 1 ? 's' : ''),
+    onClose: onClose,
+    wide: true,
+    footer: selected.length > 0 ? React.createElement(React.Fragment, null, React.createElement("button", {
+      className: "btn btn-ghost",
+      onClick: () => setSelected([])
+    }, "Tout d\xE9s\xE9lectionner"), React.createElement("div", {
+      className: "grow"
+    }), React.createElement("button", {
+      className: "btn btn-ghost",
+      style: {
+        color: 'var(--danger)'
+      },
+      onClick: () => {
+        onDelete(selected);
+        setSelected([]);
+      }
+    }, React.createElement(Icon, {
+      name: "trash",
+      size: 16
+    }), " Supprimer (", selected.length, ")"), React.createElement("button", {
+      className: "btn btn-meal",
+      onClick: () => setShowMoveMenu(true)
+    }, React.createElement(Icon, {
+      name: "arrow-right",
+      size: 16
+    }), " D\xE9placer (", selected.length, ")")) : React.createElement(React.Fragment, null, React.createElement("div", {
+      className: "grow"
+    }), React.createElement("button", {
+      className: "btn btn-ghost",
+      onClick: onClose
+    }, "Fermer"))
+  }, items.length === 0 ? React.createElement("div", {
+    style: {
+      padding: 30,
+      textAlign: 'center',
+      color: 'var(--ink-3)'
+    }
+  }, "Aucun article dans cette cat\xE9gorie.") : React.createElement(React.Fragment, null, React.createElement("div", {
+    className: "row",
+    style: {
+      alignItems: 'center',
+      marginBottom: 12,
+      flexWrap: 'wrap',
+      gap: 10
+    }
+  }, React.createElement("label", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      cursor: 'pointer',
+      fontSize: 14,
+      fontWeight: 600
+    }
+  }, React.createElement("input", {
+    type: "checkbox",
+    checked: allSelected,
+    onChange: toggleAll,
+    style: {
+      width: 18,
+      height: 18
+    }
+  }), allSelected ? 'Tout désélectionner' : 'Tout sélectionner'), React.createElement("div", {
+    className: "grow"
+  }), React.createElement("div", {
+    className: "txt-sm muted"
+  }, selected.length > 0 ? selected.length + ' sélectionné' + (selected.length > 1 ? 's' : '') : 'Coche pour gérer plusieurs articles')), React.createElement("div", {
+    style: {
+      display: 'grid',
+      gap: 6
+    }
+  }, sortedItems.map(it => {
+    const checked = selected.includes(it.id);
+    return React.createElement("div", {
+      key: it.id,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 12px',
+        background: checked ? 'var(--meal-soft)' : '#fff',
+        border: '1px solid var(--line)',
+        borderRadius: 12
+      }
+    }, React.createElement("input", {
+      type: "checkbox",
+      checked: checked,
+      onChange: () => toggle(it.id),
+      style: {
+        width: 18,
+        height: 18,
+        flexShrink: 0
+      }
+    }), React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, React.createElement("div", {
+      className: "bold",
+      style: {
+        fontSize: 14,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap'
+      }
+    }, it.name || '(sans nom)'), it.brand && React.createElement("div", {
+      className: "txt-sm muted",
+      style: {
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap'
+      }
+    }, it.brand)), React.createElement("details", {
+      style: {
+        position: 'relative',
+        flexShrink: 0
+      }
+    }, React.createElement("summary", {
+      style: {
+        cursor: 'pointer',
+        listStyle: 'none',
+        padding: '6px 10px',
+        borderRadius: 8,
+        background: 'var(--cream-deep)',
+        fontSize: 12,
+        fontWeight: 600,
+        color: 'var(--ink-2)',
+        whiteSpace: 'nowrap'
+      }
+    }, "D\xE9placer \u2192"), React.createElement("div", {
+      style: {
+        position: 'absolute',
+        right: 0,
+        top: '100%',
+        marginTop: 4,
+        background: '#fff',
+        border: '1px solid var(--line)',
+        borderRadius: 12,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        padding: 6,
+        zIndex: 20,
+        minWidth: 200
+      }
+    }, otherCategories.map(c => React.createElement("button", {
+      key: c.key,
+      type: "button",
+      onClick: () => moveOne(it.id, c.key),
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 10px',
+        width: '100%',
+        background: 'none',
+        border: 0,
+        borderRadius: 8,
+        cursor: 'pointer',
+        textAlign: 'left',
+        fontSize: 13
+      }
+    }, React.createElement(CategoryIcon, {
+      category: c,
+      size: 20
+    }), " ", c.label)))));
+  }))), showMoveMenu && React.createElement("div", {
+    onClick: () => setShowMoveMenu(false),
+    style: {
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.4)',
+      zIndex: 1100,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 16
+    }
+  }, React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      background: '#fff',
+      borderRadius: 16,
+      padding: 20,
+      maxWidth: 420,
+      width: '100%'
+    }
+  }, React.createElement("h3", {
+    style: {
+      margin: '0 0 14px',
+      fontFamily: 'var(--font-display)',
+      fontSize: 18
+    }
+  }, "D\xE9placer ", selected.length, " article", selected.length > 1 ? 's' : '', " vers\u2026"), React.createElement("div", {
+    style: {
+      display: 'grid',
+      gap: 6
+    }
+  }, otherCategories.map(c => React.createElement("button", {
+    key: c.key,
+    type: "button",
+    onClick: () => handleMove(c.key),
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      padding: '12px 14px',
+      background: '#fff',
+      border: '1px solid var(--line)',
+      borderRadius: 12,
+      cursor: 'pointer',
+      textAlign: 'left'
+    }
+  }, React.createElement(CategoryIcon, {
+    category: c,
+    size: 24
+  }), React.createElement("span", {
+    className: "bold",
+    style: {
+      fontSize: 14
+    }
+  }, c.label)))), React.createElement("button", {
+    className: "btn btn-ghost btn-block",
+    onClick: () => setShowMoveMenu(false),
+    style: {
+      marginTop: 12
+    }
+  }, "Annuler"))));
+}
 Object.assign(window, {
   CategoriesScreen,
   AlertsScreen,
-  SettingsModal
+  SettingsModal,
+  CategoryItemsModal
 });
 const MEAL_TWEAK_DEFAULTS = {
   "logoSize": 48
